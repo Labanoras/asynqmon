@@ -33,6 +33,7 @@ func TestParseFlags(t *testing.T) {
 				EnableMetricsExporter: false,
 				PrometheusServerAddr:  "",
 				ReadOnly:              false,
+				BasicAuth:             "",
 
 				Args: []string{},
 			},

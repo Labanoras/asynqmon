@@ -1,6 +1,8 @@
 package asynqmon
 
 import (
+	"crypto/sha256"
+	"crypto/subtle"
 	"embed"
 	"fmt"
 	"net/http"
@@ -43,6 +45,9 @@ type Options struct {
 
 	// Set ReadOnly to true to restrict user to view-only mode.
 	ReadOnly bool
+
+	// Enable HTTP basic authentication if username:password is provided.
+	BasicAuth string
 }
 
 // HTTPHandler is a http.Handler for asynqmon application.
@@ -211,6 +216,37 @@ func muxRouter(opts Options, rc redis.UniversalClient, inspector *asynq.Inspecto
 	// Restrict APIs when running in read-only mode.
 	if opts.ReadOnly {
 		api.Use(restrictToReadOnly)
+	}
+
+	// Enable HTTP basic authentication if username:password is provided.
+	if opts.BasicAuth != "" {
+		s := strings.Split(opts.BasicAuth, ":")
+		if len(s) == 2 {
+			api.Use(
+				func(h http.Handler) http.Handler {
+					return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						username, password, ok := r.BasicAuth()
+						if ok {
+							usernameHash := sha256.Sum256([]byte(username))
+							passwordHash := sha256.Sum256([]byte(password))
+							expectedUsernameHash := sha256.Sum256([]byte(s[0]))
+							expectedPasswordHash := sha256.Sum256([]byte(s[1]))
+
+							usernameMatch := (subtle.ConstantTimeCompare(usernameHash[:], expectedUsernameHash[:]) == 1)
+							passwordMatch := (subtle.ConstantTimeCompare(passwordHash[:], expectedPasswordHash[:]) == 1)
+
+							if usernameMatch && passwordMatch {
+								h.ServeHTTP(w, r)
+								return
+							}
+						}
+
+						w.Header().Set("WWW-Authenticate", `Basic realm="restricted", charset="UTF-8"`)
+						http.Error(w, "Unauthorized", http.StatusUnauthorized)
+					})
+				},
+			)
+		}
 	}
 
 	// Everything else, route to uiAssetsHandler.
