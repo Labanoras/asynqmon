@@ -157,7 +157,6 @@ func main() {
 		ResultFormatter:   asynqmon.ResultFormatterFunc(resultFormatterFunc(cfg)),
 		PrometheusAddress: cfg.PrometheusServerAddr,
 		ReadOnly:          cfg.ReadOnly,
-		BasicAuth:         cfg.BasicAuth,
 	})
 	defer h.Close()
 
@@ -165,7 +164,7 @@ func main() {
 		AllowedMethods: []string{"GET", "POST", "DELETE"},
 	})
 	mux := http.NewServeMux()
-	mux.Handle("/", c.Handler(h))
+	mux.Handle("/", c.Handler(basicAuth(h, cfg.BasicAuth)))
 	if cfg.EnableMetricsExporter {
 		// Using NewPedanticRegistry here to test the implementation of Collectors and Metrics.
 		reg := prometheus.NewPedanticRegistry()
