@@ -46,7 +46,7 @@ type Options struct {
 	// Set ReadOnly to true to restrict user to view-only mode.
 	ReadOnly bool
 
-	// Enable HTTP basic authentication if username and password is provided (<USERNAME>:<PASSWORD>)
+	// Enable HTTP basic authentication if username:password is provided.
 	BasicAuth string
 }
 
@@ -218,7 +218,7 @@ func muxRouter(opts Options, rc redis.UniversalClient, inspector *asynq.Inspecto
 		api.Use(restrictToReadOnly)
 	}
 
-	// Use HTTP basic authentication if username:password is provided.
+	// Enable HTTP basic authentication if username:password is provided.
 	if opts.BasicAuth != "" {
 		s := strings.Split(opts.BasicAuth, ":")
 		if len(s) == 2 {
